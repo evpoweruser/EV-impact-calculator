@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>EV Impact Calculator</title>
+<style>
+body { font-family: sans-serif; }
+label { display: block; margin-bottom: 5px; }
+input[type="number"] { width: 150px; padding: 5px; margin-bottom: 10px; box-sizing: border-box; }
+#results { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
+.error { color: red; font-size: smaller; }
+</style>
+</head>
+<body>
+
+<h1>EV Impact Calculator</h1>
+
+<label for="distance">Total Distance Driven (km):</label>
+<input type="number" id="distance" value="87004" min="0"><span class="error" id="distanceError"></span>
+
+<label for="fuelConsumption">Petrol Car Fuel Consumption (km/l):</label>
+<input type="number" id="fuelConsumption" value="15" min="0"><span class="error" id="fuelConsumptionError"></span>
+
+<label for="petrolPrice">Petrol Price (₹/litre):</label>
+<input type="number" id="petrolPrice" value="94.83" min="0"><span class="error" id="petrolPriceError"></span>
+
+<label for="electricityConsumption">EV Electricity Consumption (kWh/km):</label>
+<input type="number" id="electricityConsumption" value="0.12" min="0"><span class="error" id="electricityConsumptionError"></span>
+
+<label for="renewableFraction">Renewable Energy Fraction (e.g., 0.2821 for 28.21%):</label>
+<input type="number" id="renewableFraction" value="0.2821" min="0" max="1"><span class="error" id="renewableFractionError"></span>
+
+<label for="homeChargingPercentage">Home Charging Percentage (e.g., 0.89 for 89%):</label>
+<input type="number" id="homeChargingPercentage" value="0.89" min="0" max="1"><span class="error" id="homeChargingPercentageError"></span>
+
+<label for="homeChargingRate">Home Charging Rate (₹/kWh):</label>
+<input type="number" id="homeChargingRate" value="6.30" min="0"><span class="error" id="homeChargingRateError"></span>
+
+<label for="publicChargingRate">Public Charging Rate (₹/kWh):</label>
+<input type="number" id="publicChargingRate" value="21" min="0"><span class="error" id="publicChargingRateError"></span>
+
+<label for="daysDriven">Days Driven Electric:</label>
+<input type="number" id="daysDriven" value="1399" min="0"><span class="error" id="daysDrivenError"></span>
+
+<button onclick="calculateImpact()">Calculate Impact</button>
+
+<div id="results"></div>
+
+<script>
+function calculateImpact() {
+    let distance = validateInput("distance");
+    let fuelConsumption = validateInput("fuelConsumption");
+    let petrolPrice = validateInput("petrolPrice");
+    let electricityConsumption = validateInput("electricityConsumption");
+    let renewableFraction = validateInput("renewableFraction");
+    let homeChargingPercentage = validateInput("homeChargingPercentage");
+    let homeChargingRate = validateInput("homeChargingRate");
+    let publicChargingRate = validateInput("publicChargingRate");
+    let daysDriven = validateInput("daysDriven");
+
+    if (distance === false || fuelConsumption === false || petrolPrice === false || electricityConsumption === false || renewableFraction === false || homeChargingPercentage === false || homeChargingRate === false || publicChargingRate === false || daysDriven === false) {
+        return;
+    }
+
+    const petrolUsed = distance / fuelConsumption;
+    const petrolCO2 = petrolUsed * 2.31;
+    const electricityConsumed = distance * electricityConsumption;
+    const nonRenewableCO2 = electricityConsumed * (1 - renewableFraction) * 0.7;
+    const co2Offset = petrolCO2 - nonRenewableCO2;
+    const dailyCO2Offset = co2Offset / daysDriven;
+    const petrolCost = petrolUsed * petrolPrice;
+    const homeChargingCost = electricityConsumed * homeChargingPercentage * homeChargingRate;
+    const publicChargingCost = electricityConsumed * (1- homeChargingPercentage) * publicChargingRate;
+    const totalChargingCost = homeChargingCost + publicChargingCost;
+    const moneySaved = petrolCost - totalChargingCost;
+    const treesEquivalent = co2Offset / 420;
+
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = `
+        <h2>Results</h2>
+        <p>Total Petrol Used (litres): ${petrolUsed.toFixed(2)}</p>
+        <p>CO2 Emissions (Petrol): ${petrolCO2.toFixed(2)} kg</p>
+        <p>Electricity Consumed (kWh): ${electricityConsumed.toFixed(2)}</p>
+        <p>CO2 Emissions (Non-Renewable): ${nonRenewableCO2.toFixed(2)} kg</p>
+        <p>Total CO2 Offset: ${co2Offset.toFixed(2)} kg</p>
+        <p>Daily CO2 Offset: ${dailyCO2Offset.toFixed(2)} kg/day</p>
+        <p>Equivalent Petrol Cost: ₹${petrolCost.toFixed(2)}</p>
+        <p>Total Charging Cost: ₹${totalChargingCost.toFixed(2)}</p>
+        <p>Money Saved: ₹${moneySaved.toFixed(2)}</p>
+        <p>Equivalent Trees Planted: ${treesEquivalent.toFixed(2)}</p>
+    `;
+}
+
+function validateInput(inputId){
+    let inputField = document.getElementById(inputId);
+    let errorField = document.getElementById(inputId + "Error");
+    let value = parseFloat(inputField.value);
+
+    if (isNaN(value) || value < parseFloat(inputField.min) || value > parseFloat(inputField.max || Infinity)){
+        errorField.textContent = "Please enter a valid number greater than or equal to " + inputField.min + (inputField.max ? " and less than or equal to " + inputField.max : "");
+        return false;
+    } else {
+        errorField.textContent = "";
+        return value;
+    }
+}
+</script>
+
+</body>
+</html>
