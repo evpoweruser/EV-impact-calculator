@@ -4,23 +4,30 @@
     <meta charset="UTF-8">
     <title>EV Emissions Calculator</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
-        .card { background: #f5f5f5; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; }
-        input { padding: 8px; margin: 0.5rem 0; width: 150px; }
-        button { background: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 4px; }
-        .result { margin-top: 1rem; padding: 1rem; background: white; border-radius: 4px; }
-        .co2-diesel { color: #c0392b; }
-        .co2-petrol { color: #e67e22; }
-        .co2-ev { color: #27ae60; }
+        /* ... (keep previous styles) ... */
+        select { padding: 8px; margin: 0.5rem 0; width: 200px; }
+        .energy-mix { margin: 0.5rem 0; font-size: 0.9em; color: #666; }
     </style>
 </head>
 <body>
     <div class="card">
         <h2>EV Emissions Calculator</h2>
-        <input type="number" id="kmInput" placeholder="Enter kilometers" value="100">
-        <button onclick="calculate()">Calculate</button>
-        
+        <div>
+            <input type="number" id="kmInput" placeholder="Enter kilometers" value="100">
+            <select id="countrySelect">
+                <option value="global">Global Average</option>
+                <option value="NO">Norway</option>
+                <option value="FR">France</option>
+                <option value="DE">Germany</option>
+                <option value="US">United States</option>
+                <option value="CN">China</option>
+                <option value="IN">India</option>
+            </select>
+            <button onclick="calculate()">Calculate</button>
+        </div>
+
         <div id="results" style="display: none;">
+            <div class="energy-mix" id="energyMix"></div>
             <div class="result">
                 <h3 class="co2-ev" id="evOutput"></h3>
                 <p>VS Diesel: <span class="co2-diesel" id="dieselOutput"></span></p>
@@ -30,27 +37,46 @@
     </div>
 
     <script>
-        const EMISSIONS = {
-            DIESEL_CO2: 2.64,    // kg per liter
-            PETROL_CO2: 2.31,    // kg per liter
-            ELECTRICITY_CO2: 0.3,// kg per kWh
-            EV_KM_PER_KWH: 5.56, // 1 / 0.18 kWh/km
-            DIESEL_KM_PER_L: 14,
-            PETROL_KM_PER_L: 12
+        // Data from Our World in Data (simplified for demo)
+        const COUNTRY_DATA = {
+            'global': { fossil: 60, renewable: 30, nuclear: 10 },
+            'NO': { fossil: 2, renewable: 98, nuclear: 0 },   // Norway
+            'FR': { fossil: 8, renewable: 23, nuclear: 69 },  // France
+            'DE': { fossil: 44, renewable: 44, nuclear: 12 }, // Germany
+            'US': { fossil: 60, renewable: 21, nuclear: 19 }, // USA
+            'CN': { fossil: 65, renewable: 30, nuclear: 5 },  // China
+            'IN': { fossil: 75, renewable: 23, nuclear: 2 }   // India
         };
+
+        const FOSSIL_CO2_KG_PER_KWH = 0.475; // Average for fossil electricity
+        const RENEWABLE_CO2_KG_PER_KWH = 0.05; // Includes manufacturing impacts
 
         function calculate() {
             const km = parseFloat(document.getElementById('kmInput').value);
-            const results = document.getElementById('results');
+            const country = document.getElementById('countrySelect').value;
+            const data = COUNTRY_DATA[country];
             
-            // Calculations
-            const evKwh = km / EMISSIONS.EV_KM_PER_KWH;
-            const evCo2 = evKwh * EMISSIONS.ELECTRICITY_CO2;
-            
-            const dieselCo2 = (km / EMISSIONS.DIESEL_KM_PER_L) * EMISSIONS.DIESEL_CO2;
-            const petrolCo2 = (km / EMISSIONS.PETROL_KM_PER_L) * EMISSIONS.PETROL_CO2;
+            // Calculate national electricity mix CO2 intensity
+            const electricityCo2 = (
+                (data.fossil * FOSSIL_CO2_KG_PER_KWH) +
+                (data.renewable * RENEWABLE_CO2_KG_PER_KWH)
+            ) / 100;
 
-            // Update UI
+            // EV calculations
+            const evKwh = km * 0.18; // 0.18 kWh/km
+            const evCo2 = evKwh * electricityCo2;
+
+            // ICE calculations (unchanged)
+            const dieselCo2 = (km / 14) * 2.64;
+            const petrolCo2 = (km / 12) * 2.31;
+
+            // Update display
+            document.getElementById('energyMix').innerHTML = `
+                ${data.renewable}% renewable ⚡ 
+                ${data.fossil}% fossil 🔥 
+                (CO2 intensity: ${electricityCo2.toFixed(3)}kg/kWh)
+            `;
+
             document.getElementById('evOutput').textContent = 
                 `${evKwh.toFixed(1)}kWh (${evCo2.toFixed(1)}kg CO₂)`;
             
@@ -60,8 +86,8 @@
             document.getElementById('petrolOutput').textContent = 
                 `${petrolCo2.toFixed(1)}kg (Save ${(petrolCo2 - evCo2).toFixed(1)}kg)`;
             
-            results.style.display = 'block';
+            document.getElementById('results').style.display = 'block';
         }
     </script>
 </body>
-</html>ev
+</html>
