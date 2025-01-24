@@ -4,16 +4,26 @@
     <meta charset="UTF-8">
     <title>EV Emissions Calculator</title>
     <style>
-        /* ... (keep previous styles) ... */
-        select { padding: 8px; margin: 0.5rem 0; width: 200px; }
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+        .card { background: #f5f5f5; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; }
+        input, select { padding: 8px; margin: 0.5rem 0; width: 200px; }
+        button { background: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; }
+        .result { margin-top: 1rem; padding: 1rem; background: white; border-radius: 4px; }
+        .co2-diesel { color: #c0392b; }
+        .co2-petrol { color: #e67e22; }
+        .co2-ev { color: #27ae60; }
         .energy-mix { margin: 0.5rem 0; font-size: 0.9em; color: #666; }
+        .tree-impact { color: #2ecc71; margin-top: 1rem; padding: 0.5rem; background: #e8f5e9; border-radius: 4px; }
+        .input-group { margin: 0.5rem 0; }
     </style>
 </head>
 <body>
     <div class="card">
         <h2>EV Emissions Calculator</h2>
-        <div>
-            <input type="number" id="kmInput" placeholder="Enter kilometers" value="100">
+        <div class="input-group">
+            <input type="number" id="kmInput" placeholder="Enter kilometers" value="100" min="1">
+        </div>
+        <div class="input-group">
             <select id="countrySelect">
                 <option value="global">Global Average</option>
                 <option value="NO">Norway</option>
@@ -23,8 +33,13 @@
                 <option value="CN">China</option>
                 <option value="IN">India</option>
             </select>
-            <button onclick="calculate()">Calculate</button>
         </div>
+        <div class="input-group">
+            <input type="number" id="evEfficiency" 
+                   placeholder="EV Efficiency (Wh/km)" 
+                   value="180" min="50" max="300" step="10">
+        </div>
+        <button onclick="calculate()">Calculate</button>
 
         <div id="results" style="display: none;">
             <div class="energy-mix" id="energyMix"></div>
@@ -33,59 +48,77 @@
                 <p>VS Diesel: <span class="co2-diesel" id="dieselOutput"></span></p>
                 <p>VS Petrol: <span class="co2-petrol" id="petrolOutput"></span></p>
             </div>
+            <div class="tree-impact" id="treeImpact"></div>
         </div>
     </div>
 
     <script>
-        // Data from Our World in Data (simplified for demo)
         const COUNTRY_DATA = {
             'global': { fossil: 60, renewable: 30, nuclear: 10 },
-            'NO': { fossil: 2, renewable: 98, nuclear: 0 },   // Norway
-            'FR': { fossil: 8, renewable: 23, nuclear: 69 },  // France
-            'DE': { fossil: 44, renewable: 44, nuclear: 12 }, // Germany
-            'US': { fossil: 60, renewable: 21, nuclear: 19 }, // USA
-            'CN': { fossil: 65, renewable: 30, nuclear: 5 },  // China
-            'IN': { fossil: 75, renewable: 23, nuclear: 2 }   // India
+            'NO': { fossil: 2, renewable: 98, nuclear: 0 },
+            'FR': { fossil: 8, renewable: 23, nuclear: 69 },
+            'DE': { fossil: 44, renewable: 44, nuclear: 12 },
+            'US': { fossil: 60, renewable: 21, nuclear: 19 },
+            'CN': { fossil: 65, renewable: 30, nuclear: 5 },
+            'IN': { fossil: 75, renewable: 23, nuclear: 2 }
         };
 
-        const FOSSIL_CO2_KG_PER_KWH = 0.475; // Average for fossil electricity
-        const RENEWABLE_CO2_KG_PER_KWH = 0.05; // Includes manufacturing impacts
+        const FOSSIL_CO2_KG_PER_KWH = 0.475;
+        const RENEWABLE_CO2_KG_PER_KWH = 0.05;
+        const KG_CO2_PER_TREE_YEAR = 20;
+        const DIESEL_CO2_PER_KM = 2.64 / 14;  // kg/km
+        const PETROL_CO2_PER_KM = 2.31 / 12;  // kg/km
 
         function calculate() {
-            const km = parseFloat(document.getElementById('kmInput').value);
+            const km = parseFloat(document.getElementById('kmInput').value) || 0;
             const country = document.getElementById('countrySelect').value;
+            const efficiency = parseFloat(document.getElementById('evEfficiency').value) || 180;
             const data = COUNTRY_DATA[country];
             
-            // Calculate national electricity mix CO2 intensity
+            // Convert Wh/km to kWh/km
+            const kwhPerKm = efficiency / 1000;
+
+            // Calculate electricity CO2 intensity
             const electricityCo2 = (
                 (data.fossil * FOSSIL_CO2_KG_PER_KWH) +
                 (data.renewable * RENEWABLE_CO2_KG_PER_KWH)
             ) / 100;
 
             // EV calculations
-            const evKwh = km * 0.18; // 0.18 kWh/km
+            const evKwh = km * kwhPerKm;
             const evCo2 = evKwh * electricityCo2;
 
-            // ICE calculations (unchanged)
-            const dieselCo2 = (km / 14) * 2.64;
-            const petrolCo2 = (km / 12) * 2.31;
+            // ICE calculations
+            const dieselCo2 = km * DIESEL_CO2_PER_KM;
+            const petrolCo2 = km * PETROL_CO2_PER_KM;
+
+            // Tree equivalence
+            const avgCo2Reduction = ((dieselCo2 - evCo2) + (petrolCo2 - evCo2)) / 2;
+            const treeEquivalence = avgCo2Reduction / KG_CO2_PER_TREE_YEAR;
 
             // Update display
             document.getElementById('energyMix').innerHTML = `
-                ${data.renewable}% renewable ⚡ 
+                Energy mix: ${data.renewable}% renewable ⚡ 
                 ${data.fossil}% fossil 🔥 
-                (CO2 intensity: ${electricityCo2.toFixed(3)}kg/kWh)
+                (CO₂ intensity: ${electricityCo2.toFixed(3)}kg/kWh)
             `;
 
-            document.getElementById('evOutput').textContent = 
-                `${evKwh.toFixed(1)}kWh (${evCo2.toFixed(1)}kg CO₂)`;
-            
+            document.getElementById('evOutput').innerHTML = `
+                ${evKwh.toFixed(1)}kWh<br>
+                ${evCo2.toFixed(1)}kg CO₂ @ ${efficiency} Wh/km
+            `;
+
             document.getElementById('dieselOutput').textContent = 
                 `${dieselCo2.toFixed(1)}kg (Save ${(dieselCo2 - evCo2).toFixed(1)}kg)`;
             
             document.getElementById('petrolOutput').textContent = 
                 `${petrolCo2.toFixed(1)}kg (Save ${(petrolCo2 - evCo2).toFixed(1)}kg)`;
-            
+
+            document.getElementById('treeImpact').innerHTML = `
+                CO₂ reduction equivalent to planting <strong>~${Math.round(treeEquivalence)} trees</strong><br>
+                <small>(assuming ${KG_CO2_PER_TREE_YEAR}kg annual absorption per tree)</small>
+            `;
+
             document.getElementById('results').style.display = 'block';
         }
     </script>
