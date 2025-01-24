@@ -1,1 +1,67 @@
-ev
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EV Emissions Calculator</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+        .card { background: #f5f5f5; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; }
+        input { padding: 8px; margin: 0.5rem 0; width: 150px; }
+        button { background: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 4px; }
+        .result { margin-top: 1rem; padding: 1rem; background: white; border-radius: 4px; }
+        .co2-diesel { color: #c0392b; }
+        .co2-petrol { color: #e67e22; }
+        .co2-ev { color: #27ae60; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>EV Emissions Calculator</h2>
+        <input type="number" id="kmInput" placeholder="Enter kilometers" value="100">
+        <button onclick="calculate()">Calculate</button>
+        
+        <div id="results" style="display: none;">
+            <div class="result">
+                <h3 class="co2-ev" id="evOutput"></h3>
+                <p>VS Diesel: <span class="co2-diesel" id="dieselOutput"></span></p>
+                <p>VS Petrol: <span class="co2-petrol" id="petrolOutput"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const EMISSIONS = {
+            DIESEL_CO2: 2.64,    // kg per liter
+            PETROL_CO2: 2.31,    // kg per liter
+            ELECTRICITY_CO2: 0.3,// kg per kWh
+            EV_KM_PER_KWH: 5.56, // 1 / 0.18 kWh/km
+            DIESEL_KM_PER_L: 14,
+            PETROL_KM_PER_L: 12
+        };
+
+        function calculate() {
+            const km = parseFloat(document.getElementById('kmInput').value);
+            const results = document.getElementById('results');
+            
+            // Calculations
+            const evKwh = km / EMISSIONS.EV_KM_PER_KWH;
+            const evCo2 = evKwh * EMISSIONS.ELECTRICITY_CO2;
+            
+            const dieselCo2 = (km / EMISSIONS.DIESEL_KM_PER_L) * EMISSIONS.DIESEL_CO2;
+            const petrolCo2 = (km / EMISSIONS.PETROL_KM_PER_L) * EMISSIONS.PETROL_CO2;
+
+            // Update UI
+            document.getElementById('evOutput').textContent = 
+                `${evKwh.toFixed(1)}kWh (${evCo2.toFixed(1)}kg CO₂)`;
+            
+            document.getElementById('dieselOutput').textContent = 
+                `${dieselCo2.toFixed(1)}kg (Save ${(dieselCo2 - evCo2).toFixed(1)}kg)`;
+            
+            document.getElementById('petrolOutput').textContent = 
+                `${petrolCo2.toFixed(1)}kg (Save ${(petrolCo2 - evCo2).toFixed(1)}kg)`;
+            
+            results.style.display = 'block';
+        }
+    </script>
+</body>
+</html>ev
